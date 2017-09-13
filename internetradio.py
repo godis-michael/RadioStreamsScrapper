@@ -130,7 +130,8 @@ class RadioStreamsScrapper:
                 streams = np.append(streams, [[stream_name, stream_link]], axis=0)
                 index += 1
             except Exception as e:
-                print('Exception found:', stream_link, e)
+                print('Exception found:', stream_name, stream_link, e)
+        self._remove_temp_dir()
         print('Finished')
 
         return streams
@@ -173,7 +174,7 @@ class RadioStreamsScrapper:
         con = None
 
         try:
-            print('Loading category into database')
+            print('Loading category into database...')
             con = psycopg2.connect("host='%s' dbname='%s' user='%s' password='%s'" % (host, dbname, user, password))
             print('Opened database successfully')
             cur = con.cursor()
@@ -189,6 +190,42 @@ class RadioStreamsScrapper:
             cur.executemany(insert_query, data)
 
             con.commit()
+            print('Finished loading')
+
+        except psycopg2.DatabaseError as e:
+            if con:
+                con.rollback()
+
+            print('Error %s' % e)
+            sys.exit(1)
+
+        finally:
+            if con:
+                con.close()
+
+    @staticmethod
+    def update_db(table_name, data, dbname, user, password, host='localhost'):
+
+        """ Compares category data with existing table. If category does not exist among tables, it will be
+        downloaded. """
+
+        con = None
+
+        try:
+            print('Updating category in database...')
+            con = psycopg2.connect("host='%s' dbname='%s' user='%s' password='%s'" % (host, dbname, user, password))
+            print('Opened database successfully')
+            cur = con.cursor()
+            cur.execute("SELECT table_name FROM information_schema.tables "
+                        "WHERE table_type = 'BASE TABLE' AND table_schema = 'public' "
+                        "ORDER BY table_type, table_name")
+            exist_tables = cur.fetchall()
+
+            if (table_name,) in exist_tables:
+                print('very good')
+            else:
+                print('OMG')
+
             print('Finished loading')
 
         except psycopg2.DatabaseError as e:

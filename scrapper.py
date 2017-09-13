@@ -7,8 +7,10 @@ from internetradio import RadioStreamsScrapper
 
 
 def argparse_range(string):
+    """ Definition of range type for argument parser. Example of value: '23-47'. """
+
     values = re.search(r'^(\d+)-(\d+)$', string)
-    if values == None:
+    if values is None:
         msg = "invalid range value: {}".format(string)
         raise ArgumentTypeError(msg)
     elif int(values.groups()[0]) >= int(values.groups()[1]):
@@ -17,13 +19,18 @@ def argparse_range(string):
     return values.groups()
 
 
-def categories_iterate(target, iterable):
+def start_loading(target, iterable, dbname, user, password):
+    """ Iterating function for getting streams and loading into database. """
+
     for i in iterable:
-        category_streams = target.get_streams(i, numerated=True, tupled=True)
-        target.load_into_db(i, category_streams, 'irdb', 'godis_michael', '211195')
+        streams = target.get_streams(i, numerated=True, tupled=True)
+        target.load_into_db(i, streams, dbname, user, password)
 
 
 def main():
+    # ===================================
+    # =========PARSING ARGUMENTS=========
+    # ===================================
     main_parser = ArgumentParser(description='Internet Radio Streams scrapper for https://www.internet-radio.com/\n',
                                  formatter_class=RawTextHelpFormatter)
     subpasers = main_parser.add_subparsers(dest='command', help='List of commands')
@@ -38,21 +45,51 @@ def main():
     load_parser.add_argument('-f', '--few', required=False, type=int, nargs='*',
                              help='Select few categories (usage: \'5 8 11 25\')')
     args = main_parser.parse_args()
+    # ===================================
+    # =============END BLOCK=============
+    # ===================================
 
-    resource = RadioStreamsScrapper(args.link)
+    resource = RadioStreamsScrapper(args.link)  # Initialize scrapper
+
+    # ===================================
+    # ==========AVAILABLE GENRES=========
+    # ===================================
     if args.command == 'show-genres':
         categories = resource.load_categories()
         for index, category in enumerate(categories):
             print('%d - %s' % (index, category))
+    # ===================================
+    # =============END BLOCK=============
+    # ===================================
 
+    # ===================================
+    # ==========DOWNLOAD STREAMS=========
+    # ===================================
     elif args.command == 'populate-db':
         if not (args.all or args.one or args.range or args.few):
-            print('No action requested, add any command')
+            print('No action requested, add avaliable command')
         else:
-            categories = resource.load_categories()
+            categories = resource.load_categories()  # Load available categories
+            print('Establishing connection with database...')
+            dbname = input('Enter database name: ')
+            user = input('user: ')
+            password = input('password: ')
+            if args.all:
+                start_loading(resource, categories, dbname, user, password)
+            elif args.one:
+                streams = resource.get_streams(categories[args.one], numerated=True, tupled=True)
+                resource.load_into_db(categories[args.one], streams, dbname, user, password)
+            elif args.range:
+                start_loading(resource, categories[int(args.range[0]):int(args.range[1]) + 1], dbname, user, password)
+            elif args.few:
+                for _ in args.few:
+                    streams = resource.get_streams(categories[_], numerated=True, tupled=True)
+                    resource.load_into_db(categories[_], streams, dbname, user, password)
     else:
         print('No commands provided. Try again with any available command.')
-
+    # ===================================
+    # =============END BLOCK=============
+    # ===================================
 
 if __name__ == '__main__':
     main()
