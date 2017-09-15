@@ -3,10 +3,11 @@ import re
 from argparse import ArgumentParser
 from argparse import ArgumentTypeError
 from argparse import RawTextHelpFormatter
-from internetradio import RadioStreamsScrapper
+from iradio import RadioStreamsScrapper
 
 
 def argparse_range(string):
+
     """ Definition of range type for argument parser. Example of value: '23-47'. """
 
     values = re.search(r'^(\d+)-(\d+)$', string)
@@ -20,6 +21,7 @@ def argparse_range(string):
 
 
 def start_loading(target, iterable, dbname, user, password):
+
     """ Iterating function for getting streams and loading into database. """
 
     for i in iterable:
